@@ -63,10 +63,12 @@ mod tests {
   use futures::future::lazy;
     #[test]
     fn it_works() {
-      let f = lazy(|| {
+      let (ts_s, ts_r) = mpsc::channel(10);
+      let f = lazy(move || {
         let (f,ch_s) = ChatBox::new();
         tokio::spawn(f);
         for i in 0..5 {
+          let tss = ts_s.clone();
           let ch2 = ch_s.clone();
           let (os_s, os_r) = oneshot::channel();
           let f2 = ch_s
@@ -75,13 +77,25 @@ mod tests {
             .and_then(|_| ch2.send(Request::Since(0, os_s)))
             .map_err(|e| println!("{:?}", e))
             .and_then(|_| os_r.map_err(|_| ()))
-            .map(move |res| println!("res {} = {:?}", i, res))
-            .map_err(|e| println!("{:?}", e));
+            // .map ends without a future; this must be an .and_then to produce
+            // a future that can be continued
+            .and_then(move |res| {
+              println!("res {} = {:?}", i, res);
+              tss.send(res)
+                .map_err(move |_| println!("could not send {}", i))
+            })
+            .map(|_| ());
           tokio::spawn(f2);
         }
         Ok(())
       });
       tokio::run(f);
+
+      let mut longest = 0;
+      for v in ts_r.wait() {
+        longest = std::cmp::max(longest, v.unwrap().len())
+      }
+      assert_eq!(longest, 5);
 
     }
 }
