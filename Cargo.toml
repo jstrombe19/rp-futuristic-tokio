@@ -1,0 +1,13 @@
+[package]
+name = "chatbox"
+version = "0.1.0"
+authors = ["Jared Stromberg <jstromberg@astraspcace.net>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures = "0.1.25"
+tokio = "0.1.16"
+tokio-channel = "0.1.0"
+
